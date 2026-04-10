@@ -1,0 +1,14 @@
+{
+  "name": "@rogernavelsaker/code-intel-rust",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.10",
+  "scripts": {
+    "show-manifest": "bun --eval \"console.log(await Bun.file('nix/package-manifest.json').text())\"",
+    "postinstall": "bunx bun2nix -o bun.nix"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.10",
+    "bun2nix": "2.0.8"
+  }
+}

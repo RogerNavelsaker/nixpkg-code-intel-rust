@@ -1,0 +1,16 @@
+{
+  "package": {
+    "repo": "code-intel-rust",
+    "version": "0.1.0"
+  },
+  "binary": {
+    "name": "code-intel-rust",
+    "entrypoint": "src/cli.ts",
+    "aliases": []
+  },
+  "meta": {
+    "description": "Rust code intelligence CLI with AST and LSP subcommands",
+    "homepage": "https://github.com/RogerNavelsaker/nixpkg-code-intel-rust",
+    "licenseSpdx": "MIT"
+  }
+}
