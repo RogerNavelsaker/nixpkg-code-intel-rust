@@ -1,8 +1,16 @@
-{ bash, bun, bun2nix, lib, makeWrapper, symlinkJoin }:
+{ bun, lib, stdenv, stdenvNoCC }:
 
 let
   manifest = builtins.fromJSON (builtins.readFile ./package-manifest.json);
-  sourceRoot = lib.cleanSource ../.;
+  src = builtins.path { path = ../.; name = "source"; };
+  bunCompileTarget =
+    {
+      "x86_64-linux" = "bun-linux-x64";
+      "aarch64-linux" = "bun-linux-arm64";
+      "x86_64-darwin" = "bun-darwin-x64";
+      "aarch64-darwin" = "bun-darwin-arm64";
+    }.${stdenv.hostPlatform.system}
+      or (throw "unsupported Bun compile target for ${stdenv.hostPlatform.system}");
   licenseMap = {
     "MIT" = lib.licenses.mit;
     "Apache-2.0" = lib.licenses.asl20;
@@ -11,59 +19,38 @@ let
     if builtins.hasAttr manifest.meta.licenseSpdx licenseMap
     then licenseMap.${manifest.meta.licenseSpdx}
     else lib.licenses.unfree;
-  aliasOutputs = manifest.binary.aliases or [ ];
-  aliasOutputLinks = lib.concatMapStrings
-    (
-      alias:
-      ''
-        mkdir -p "${"$" + alias}/bin"
-        cat > "${"$" + alias}/bin/${alias}" <<EOF
-#!${lib.getExe bash}
-exec "$out/bin/${manifest.binary.name}" "\$@"
-EOF
-        chmod +x "${"$" + alias}/bin/${alias}"
-      ''
-    )
-    aliasOutputs;
-  basePackage = bun2nix.writeBunApplication {
-    pname = manifest.package.repo;
-    version = manifest.package.version;
-    packageJson = ../package.json;
-    src = sourceRoot;
-    dontUseBunBuild = true;
-    dontUseBunCheck = true;
-    startScript = ''
-      bun ${manifest.binary.entrypoint} "$@"
-    '';
-    bunDeps = bun2nix.fetchBunDeps {
-      bunNix = ../bun.nix;
-    };
-    meta = with lib; {
-      description = manifest.meta.description;
-      homepage = manifest.meta.homepage;
-      license = resolvedLicense;
-      mainProgram = manifest.binary.name;
-      platforms = platforms.linux ++ platforms.darwin;
-      broken = !(builtins.pathExists ../bun.nix);
-    };
-  };
 in
-symlinkJoin {
+stdenvNoCC.mkDerivation {
   pname = manifest.binary.name;
   version = manifest.package.version;
-  name = "${manifest.binary.name}-${manifest.package.version}";
-  outputs = [ "out" ] ++ aliasOutputs;
-  paths = [ basePackage ];
-  nativeBuildInputs = [ makeWrapper ];
-  postBuild = ''
-    rm -rf "$out/bin"
-    mkdir -p "$out/bin"
-    cat > "$out/bin/${manifest.binary.name}" <<EOF
-#!${lib.getExe bash}
-exec ${lib.getExe' bun "bun"} "${sourceRoot}/${manifest.binary.entrypoint}" "\$@"
-EOF
-    chmod +x "$out/bin/${manifest.binary.name}"
-    ${aliasOutputLinks}
+  dontUnpack = true;
+
+  nativeBuildInputs = [ bun ];
+
+  buildPhase = ''
+    runHook preBuild
+    bun build \
+      --compile \
+      --target=${bunCompileTarget} \
+      --format=esm \
+      --bytecode \
+      --outfile "$TMPDIR/${manifest.binary.name}" \
+      ${src}/${manifest.binary.entrypoint}
+    runHook postBuild
   '';
-  meta = basePackage.meta;
+
+  installPhase = ''
+    runHook preInstall
+    mkdir -p "$out/bin"
+    mv "$TMPDIR/${manifest.binary.name}" "$out/bin/${manifest.binary.name}"
+    runHook postInstall
+  '';
+
+  meta = with lib; {
+    description = manifest.meta.description;
+    homepage = manifest.meta.homepage;
+    license = resolvedLicense;
+    mainProgram = manifest.binary.name;
+    platforms = platforms.linux ++ platforms.darwin;
+  };
 }
