@@ -1,4 +1,9 @@
 {
+  "source": {
+    "channel": "github-head",
+    "defaultBranch": "main",
+    "version": "0.1.0"
+  },
   "package": {
     "repo": "code-intel-rust",
     "version": "0.1.0"

@@ -5,6 +5,9 @@
   "packageManager": "bun@1.3.10",
   "scripts": {
     "show-manifest": "bun --eval \"console.log(await Bun.file('nix/package-manifest.json').text())\"",
+    "sync:source": "bun run sync:github-source",
+    "sync:manifest": "bun run sync:github-source",
+    "sync:github-source": "bun run scripts/sync-from-github.ts",
     "postinstall": "bun x bun2nix -o bun.nix"
   },
   "devDependencies": {
